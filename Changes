@@ -1,5 +1,11 @@
 Revision history for Text-Report
 
-1.002   07.06.28.15:26
-        EeeeeeeeeHaaaaaaaaa!
+1.003		Friday, 06 July, 2007 17:17 EST
+		* Humbly cleaned up -warnings
+		* Fixed formline accumulator reset algorithm
+		* Fixed POD format
+		* Changed new() attr key from 'Log' to 'logfh'
+		  (backward compatible)
 
+1.002		Wednesday, 04 July, 2007 23:17 EST
+		* Initial release

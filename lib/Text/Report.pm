@@ -1,6 +1,5 @@
 # ***********************************************************************
 # Report                                                                *
-# /fdcc/fdcc_perl_lib_modules/lib/Text/Report.pm                        *
 #                                                                       *
 # Discussion:                                                           *
 #                                                                       *
@@ -11,8 +10,8 @@
 #          http://www.full-duplex.com                                   *
 #          http://www.in-brandon.com                                    *
 # Start:   Wednesday, 17 January, 2007                                  *
-# Version: 1.002                                                        *
-# Release: 07.06.28.15:26                                               *
+# Version: 1.003                                                        *
+# Release: 07.07.06.22:20                                               *
 # Status:  PRODUCTION                                                   *
 # ***********************************************************************
 
@@ -20,7 +19,7 @@
 #                  Copyright 2003 - 2007                       
 package Text::Report;
 
-$Text::Report::VERSION = '1.002';
+$Text::Report::VERSION = '1.003';
 @Text::Report::ISA = qw(Text);
 
 
@@ -56,7 +55,7 @@ my %debug_lev =
 
 # autoindex => 1/0, # Report.pm sets print order of blocks based upon 
 #                     creation (defblock()) order; DEFAULT=1 (strongly recommended)
-# Log => *FH
+# logfh => *FH
 # debug => ['off' | 'notice' | ...] str # Sets debug level; Default is 'critical'
 # debugv => 1/0 # carp longmess | shortmess
 # autoindex => 1/0 # If set (DEFAULT), Report.pm will index block print 
@@ -84,10 +83,13 @@ sub new
    # --- Build the default _report --- #
    $self->_default_report('report');
    
+   # --- Changed 'Log' to 'logfh' in v1.003 --- #
+   if($this{Log}){$this{logfh} = $this{Log};}
+   
    # ---------------------------------------- #
    # --- Either we get a FH or use STDOUT --- #
    # ---------------------------------------- #
-   $self->{_log}{_file} = ref $this{Log} ? $this{Log} : \*STDOUT;
+   $self->{_log}{_file} = ref $this{logfh} ? $this{logfh} : \*STDOUT;
    $self->{_debug}{_lev} = $this{debug} ? $debug_lev{$this{debug}} : 1;
    $self->{_debug}{_verbose} = $this{debugv} ? 1 : 0;
    
@@ -96,7 +98,7 @@ sub new
    # ------------------------------------------------ #
    $self->{_page}{_profile}{report}{autoindex} = $this{autoindex} ? $this{autoindex} : 1;
    
-   delete $this{Log}; delete $this{debug}; delete $this{debugv};
+   delete $this{logfh}; delete $this{debug}; delete $this{debugv};
    
    # --- Build the default _block --- #
    $self->_default_block('_block');
@@ -122,8 +124,6 @@ sub new
 sub configure
 {
    my $self = shift;
-   
-   # croak "Bad method call", unless ref $self; ***
    
    my %this = @_ ? @_ : return(undef);
    
@@ -530,7 +530,7 @@ sub setblock
    # ----------------------------------- #
    # --- Determine block print order --- #
    # ----------------------------------- #
-   if($this{order} =~ /^\d+$/)
+   if(defined $this{order} && $this{order} =~ /^\d+$/)
    {
       if($self->{_page}{_profile}{report}{autoindex})
       {
@@ -761,15 +761,18 @@ sub fill_block
       # ---------------------- #
       # --- Column header  --- #
       # ---------------------- #
-      push(@col_head, $self->{_block}{_profile}{$blockname}{column}{$col}{head});
+      if(defined $self->{_block}{_profile}{$blockname}{column}{$col}{head})
+      {
+         push(@col_head, $self->{_block}{_profile}{$blockname}{column}{$col}{head});
+      }
       
       push(@fCol, '@'.$align x $width);
    }
    
    my $columns = join(" ", @fCol);
    
-   my $format  = 'formline <<"END", @data;'."\n".'$columns'."\n"."END";
-   # --- Going to have uninit values issues here --- #
+   
+   my $format = 'formline <<"END", @data;'."\n".'$columns'."\n"."END";
    
    # ------------------------------------------------------------ #
    # --- Build title & column headers first time through only --- #
@@ -789,8 +792,8 @@ sub fill_block
             push(@{$self->{_block}{_profile}{$blockname}{hdata}}, uc($self->{_block}{_profile}{$blockname}{title}));
             
             # --- Title Underline --- #
-            my $chars = split('', $self->{_block}{_profile}{$blockname}{title}); # Get char count
-            push(@{$self->{_block}{_profile}{$blockname}{hdata}}, ($self->_draw_line('single_line', $chars)));
+            my @chars = split('', $self->{_block}{_profile}{$blockname}{title}); # Get char count
+            push(@{$self->{_block}{_profile}{$blockname}{hdata}}, ($self->_draw_line('single_line', scalar(@chars))));
             
             push(@csv, uc($self->{_block}{_profile}{$blockname}{title}));
          }
@@ -815,14 +818,15 @@ sub fill_block
          # ---------------------------- #
          # --- Build Column Headers --- #
          # ---------------------------- #
-         my @data = @col_head;
+         my @data = @col_head; 
+         
          eval $format;
          
          if($@){$self->_debug(3, "Internal/system Error - $@");} # Who the hell knows?
          
          chomp($^A);
          push(@{$self->{_block}{_profile}{$blockname}{hdata}}, $^A);
-         undef $^A;
+         $^A = '';
          
          # -------------------------------- #
          # --- Column Header Underlines --- #
@@ -832,19 +836,21 @@ sub fill_block
          my $i = 0;
          for(@col_head)
          {
-            # my $chars = split('', $_); # Width of col header
             my $chars = $self->{_block}{_profile}{$blockname}{column}{++$i}{width}; # Width of col
             push(@col_underline, ($self->_draw_line('under_line', $chars)));
          }
          
-         my @data = @col_underline; # reset data
+         @data = (); # reset data
+         
+         @data = @col_underline;
+         
          eval $format;
          
          if($@){$self->_debug(3, "Internal/system Error - $@");}
          
          chomp($^A);
          push(@{$self->{_block}{_profile}{$blockname}{hdata}}, $^A);
-         undef $^A;
+         $^A = '';
       }
       
       if(@col_head > 1){push(@csv, join(',', @col_head));}
@@ -856,6 +862,8 @@ sub fill_block
    # ---------------------------- #
    # --- Add the data portion --- #
    # ---------------------------- #
+   my $debug = 0;
+   
    foreach my $block(@sorted)
    {
       my @data = @{$block};
@@ -877,7 +885,8 @@ sub fill_block
          die $@;
       }
       
-      chomp($^A); push(@{$self->{_block}{_profile}{$blockname}{data}}, $^A); undef $^A;
+      chomp($^A); push(@{$self->{_block}{_profile}{$blockname}{data}}, $^A);
+      $^A = '';
    }
    # ---------------------- #
    # --- Store csv data --- #
@@ -1016,8 +1025,9 @@ sub rst_block
 sub del_block
 {
    my $self = shift;
+   my $blockname = shift;
    
-   delete $self->{_block}{_profile}{(shift)};
+   delete $self->{_block}{_profile}{$blockname};
    
    $self;
 }
@@ -1288,7 +1298,9 @@ sub AUTOLOAD
    my $self = shift;
    my %profile;
    
-   $profile{(shift)} = 1;
+   my $type = shift;
+   
+   if($type){$profile{$type} = 1;}
    
    my %this = @_;
    
@@ -1429,7 +1441,7 @@ Text::Report - Perl extension for generating mixed columnar formatted reports an
 
 =head1 VERSION
 
-Version 1.002
+Version 1.003
 
 
 =head1 SYNOPSIS
@@ -1593,9 +1605,13 @@ The C<new> method creates a new report object instance and defines
 the attributes of the object.
 Attributes are passed as key => value pairs:
 
-=item Log => \*HANDLE
+=back
 
-If supplied, 'Log' directs logging (debug) output to the file handle, 
+=over 6
+
+=item logfh => \*HANDLE
+
+If supplied, 'logfh' directs logging (debug) output to the file handle, 
 otherwise output is to *STDOUT.
 
 =item debug => ['off' | 'notice' | 'warning' | 'error' | 'critical']
@@ -1620,10 +1636,12 @@ index value for each report component used.
 Not pretty. 
 
 It is strongly recommended that you let Text::Report do the indexing for you. 
-The only requirement on your  part is to create the report blocks (using the 
-$obj->defblock() method) in the  order that you want them to appear in the report.
+The only requirement on your part for autoindexing is to create the report blocks 
+(using the $obj->defblock() method) in the  order that you want them to appear in 
+the report. 
 
-The default is set to true. I personally don't mess with it that often.
+The default is set to true. I personally don't mess with it that often, although
+there have been times when it became essential. Hence its availability.
 
 =back
 
@@ -1683,7 +1701,7 @@ please"
                width          => 80, 
                autoindex      => 1, 
                asis           => 0, 
-               Log            => \*STDOUT, 
+               logfh          => \*STDOUT, 
                blockPad       => {top => 0, bottom => 1}, 
                useColHeaders  => 0,
                sortby         => 0,
@@ -1699,6 +1717,10 @@ please"
 The C<configure> method is used to tweak global report settings.
 
 (You may also use the following options with new())
+
+=back
+
+=over 6
 
 =item width => n
 
@@ -1750,6 +1772,10 @@ alignment (which can also be set using setcol() method), et al.
 This is where you create a data block. It will usually be a table structure 
 that you will use to display all of that data you have been collecting from 
 some petri dish in some dark lab somewhere.
+
+=back
+
+=over 6
 
 =item name => 'string'
 
@@ -1842,6 +1868,10 @@ setcol($blockname, $col_num, align => 'center').
 
 The C<setblock> method gives you the opportunity to alter an existing data block's properties with the exception of the block name.
 
+=back
+
+=over 6
+
 =item title => 'string'
 
 The title to display for the block you are about to define. You would not use this
@@ -1891,6 +1921,10 @@ of each column.
 
 The C<setcol> method allows you to set and change certain column properties.
 
+=back
+
+=over 6
+
 =item $blockname
 
 Block name must be supplied as arg zero.
@@ -1921,6 +1955,10 @@ Column header as a string.
 
 The C<insert> method allows you to insert a block to be used as a separator where $linetype is either 'dotted_line' | 'dbl_line' | 'single_line' | 'under_line' | 'blank_line'.
 
+=back
+
+=over 6
+
 =item order => 'n'
 
 Where n is a unique integer. 
@@ -1946,6 +1984,10 @@ Make the width of the separator the number 'n' characters specified.
 
 The C<fill_block> method is where the pudding meets the highway. The data sent, as a 3-dimensional array or table, is parsed according to the properties that were set when the block was defined in defblock() or the default properties that were set at the global or report level.
 
+=back
+
+=over 6
+
 =item $blockname
 
 Block name must be supplied as arg zero. 
@@ -1967,6 +2009,10 @@ Each primary element in the data array contains the table row while the elements
 =over 6
 
 The C<report> method is how you retrieve the final, formatted report or csv data. The report is returned as an array where each element is a row or line of the report. The csv data is returned as an AoA.
+
+=back
+
+=over 6
 
 =item 'get'
 
@@ -2003,6 +2049,10 @@ Using the 'print' argument, the report is printed to STDOUT.
 
 The C<get_csv> method returns csv data in an array of arrays.
 
+=back
+
+=over 6
+
 =item @listofblocknames
 
 One or more block names to retrieve csv data
@@ -2019,6 +2069,10 @@ One or more block names to retrieve csv data
 
 The C<rst_block> method resets named block to defaults. If $block_name does not exist, creates new block $block_name and applies defaults.
 
+=back
+
+=over 6
+
 =item $block_name
 
 Must supply a valid block name as an argument.
@@ -2031,6 +2085,10 @@ Must supply a valid block name as an argument.
 =over 6
 
 The C<del_block> method deletes named block.
+
+=back
+
+=over 6
 
 =item $block_name
 
@@ -2045,6 +2103,10 @@ Must supply a valid block name as an argument.
 
 The C<clr_block_data> method clears report data & csv data from block $block_name.
 
+=back
+
+=over 6
+
 =item $block_name
 
 Must supply a valid block name as an argument.
@@ -2057,6 +2119,10 @@ Must supply a valid block name as an argument.
 =over 6
 
 The C<clr_block_headers> method clears header data from block $block_name.
+
+=back
+
+=over 6
 
 =item $block_name
 

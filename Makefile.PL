@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     NAME                => 'Text::Report',
-    VERSION             => '1.002',
+    VERSION             => '1.003',
     AUTHOR              => 'David Huggins <davidius@cpan.org>',
     VERSION_FROM        => 'lib/Text/Report.pm',
     ABSTRACT_FROM       => 'lib/Text/Report.pm',
