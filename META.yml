@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Text-Report
-version:             1.003
+version:             1.004
 abstract:            Perl extension for generating mixed columnar formatted reports and report templates
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.31

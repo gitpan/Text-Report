@@ -10,8 +10,8 @@
 #          http://www.full-duplex.com                                   *
 #          http://www.in-brandon.com                                    *
 # Start:   Wednesday, 17 January, 2007                                  *
-# Version: 1.003                                                        *
-# Release: 07.07.06.22:20                                               *
+# Version: 1.004                                                        *
+# Release: 07.07.09.09:06                                               *
 # Status:  PRODUCTION                                                   *
 # ***********************************************************************
 
@@ -19,7 +19,7 @@
 #                  Copyright 2003 - 2007                       
 package Text::Report;
 
-$Text::Report::VERSION = '1.003';
+$Text::Report::VERSION = '1.004';
 @Text::Report::ISA = qw(Text);
 
 
@@ -2159,7 +2159,228 @@ No arguments
 
 =over 4
 
-Examples should be found at L<http://www.full-duplex.com/svcs04.html> somewhere on the page.
+
+Example 1
+
+Generate a report of gas price comparisons on a per zip code basis 
+using Ashish Kasturia's Gas::Prices L<http://search.cpan.org/~ashoooo/Gas-Prices-0.0.4/lib/Gas/Prices.pm>
+
+   use Gas::Prices;
+   use Text::Report;
+   
+   
+   # --- US zip code list
+   my @code = qw(85202 85001 85201);
+   
+   
+   # --- Create our report object
+   my $rpt = Text::Report->new(debug => 'off', width => 95);
+   
+   # --- Define a block for the title area accepting the current 
+   # --- default width of 95 chars and centered justification
+   $rpt->defblock(name => 'pageHead');
+   
+   # --- Add two lines to block 'pageHead'
+   $rpt->fill_block('pageHead', ["Gasoline Pricing At Stations By Zip Code"],[scalar(localtime(int(time)))]);
+   
+   # --- Insert a text decoration
+   # --- We are using the autoindex feature and allowing Text::Report 
+   # --- to keep track of the order in which our blocks appear. We determine 
+   # --- that order by the order in which we call defblock() or insert()
+   $rpt->insert('dbl_line');
+   
+   
+   # --- We have data returning for 3 different zip codes and want to present 
+   # --- that data as pricing per zip code in one report. Create 3 blocks, 
+   # --- using each zip code as part of the block name. The structure will be 
+   # --- the same for each block in this case.
+   foreach my $zip(@code)
+   {
+      $rpt->defblock(name => 'station_data'.$zip, 
+         column =>
+         {
+            1 => {width => 20, align => 'left', head => 'Station'},
+            2 => {width => 35, align => 'left', head => 'Address'},
+            3 => {width =>  7, align => 'right', head => 'Regular'},
+            4 => {width =>  7, align => 'right', head => 'Plus'},
+            5 => {width =>  7, align => 'right', head => 'Premium'},
+            6 => {width =>  7, align => 'right', head => 'Diesel'},
+         },
+         # Block title
+         title => "Station Comparison For Zip Code $zip",
+         # Yes, use column headers
+         useColHeaders => 1,
+         # Yes "sort" using column 1
+         sortby => 1,
+         # Sort alphabetically
+         sorttype => 'alpha',
+         # Sort low to high
+         orderby => 'ascending',
+         # pad these blocks with 2 blank lines on top and bottom
+         pad => {top => 2, bottom => 2},);
+   }
+   
+   # --- Now that we've constructed the report template, all that's left is to 
+   # --- fetch and add the data
+   
+   foreach my $zip(@code)
+   {
+      my $gasprice = Gas::Prices->new($zip);
+      
+      my $stations = $gasprice->get_stations;
+      
+      sleep 3;
+      
+      my @data;
+      
+      foreach my $gas(@{$stations})
+      {
+         # Remove state & zip (personal preference)
+         $gas->{station_address} =~ s/(.*?)\,\s+\w{2}\s+\d{5}/$1/;
+         
+         push(@data, [
+               $gas->{station_name},
+               $gas->{station_address},
+               $gas->{unleaded_price},
+               $gas->{plus_price},
+               $gas->{premium_price},
+               $gas->{diesel_price}]);
+      }
+      
+      $rpt->fill_block('station_data'.$zip, @data);
+   }
+   
+   # --- Get the formatted report & print to screen
+   my @report = $rpt->report('get');
+   for(@report){print $_, "\n";}
+   
+   exit(1);
+
+Here is the resultant output from example 1:
+
+                               Gasoline Pricing At Stations By Zip Code
+                                       Mon Jul  9 10:13:33 2007
+    
+   ===============================================================================================
+    
+    
+    
+   STATION COMPARISON FOR ZIP CODE 85202
+   -------------------------------------
+    
+   Station               Address                               Regular     Plus  Premium   Diesel
+   ____________________  ___________________________________   _______  _______  _______  _______
+   7-ELEVEN              815 S DOBSON RD, MESA                   2.799      N/A      N/A      N/A
+   7-ELEVEN              2050 W GUADALUPE RD, MESA               2.799      N/A      N/A      N/A
+   7-ELEVEN              1210 W GUADALUPE RD, MESA               2.879      N/A      N/A      N/A
+   7-ELEVEN              815 S ALMA SCHOOL RD, MESA              2.819      N/A    3.059      N/A
+   CHEVRON               1205 W BASELINE RD, MESA                2.859      N/A    3.099    2.939
+   CHEVRON               1808 E BROADWAY RD, TEMPE               2.839    2.969    3.139      N/A
+   CHEVRON               414 W GUADALUPE RD, MESA                2.779    2.919    3.019      N/A
+   CIRCLE K              751 N ARIZONA AVE, GILBERT              2.779    2.979    3.089    2.899
+   CIRCLE K              2196 E APACHE BLVD, TEMPE               2.799    2.929      N/A      N/A
+   CIRCLE K              2012 W SOUTHERN AVE, MESA               2.759    2.889      N/A    2.949
+   CIRCLE K              2808 S DOBSON RD, MESA                  2.779    2.929    3.099    2.899
+   Circle K              417 S Dobson Rd, Mesa                   2.799    2.929    3.099      N/A
+   Circle K              1145 W Main St, Mesa                    2.799    2.929    3.099      N/A
+   Circle K              1955 W UNIVERSITY DR, Mesa              2.799      N/A      N/A      N/A
+   Circle K              735 W Broadway Rd, Mesa                 2.819    2.949    3.119      N/A
+   MOBIL                 1817 W BASELINE RD, MESA                2.899      N/A      N/A      N/A
+   Quik Trip             1331 S COUNTRY CLUB DR, Mesa            2.799    2.899    2.999      N/A
+   Quik Trip             2311 W BROADWAY RD, Mesa                2.799    2.899    2.999      N/A
+   SHELL                 2180 E BROADWAY RD, TEMPE               2.899    2.999    3.129    2.999
+   SHELL                 2165 E BASELINE RD, TEMPE               2.909    3.009      N/A      N/A
+   Shell                 1810 S COUNTRY CLUB DR, Mesa            2.799    2.799    2.929    2.849
+   Shell                 1158 W UNIVERSITY DR, Mesa              2.999    3.009    2.879      N/A
+   Shell                 2005 W BROADWAY RD, Mesa                2.819    2.799    3.129    2.949
+   Shell                 6349 S MCCLINTOCK DR, Tempe             2.799    2.799    3.119    2.829
+   Texaco                2816 S COUNTRY CLUB DR, Mesa            2.789      N/A      N/A    2.899
+   UNBRANDED             2997 N ALMA SCHOOL RD, CHANDLER         2.779      N/A      N/A      N/A
+   Unbranded             1510 S COUNTRY CLUB DR, Mesa            2.809      N/A    2.809    3.049
+   Unbranded             756 W SOUTHERN AVE, Mesa                2.699      N/A      N/A    2.899
+   Unbranded             1821 S COUNTRY CLUB DR, Mesa            2.829    2.959    2.899      N/A
+   Unbranded             5201 S MCCLINTOCK DR, Tempe             2.789    2.899    2.999      N/A
+    
+    
+    
+    
+   STATION COMPARISON FOR ZIP CODE 85001
+   -------------------------------------
+    
+   Station               Address                               Regular     Plus  Premium   Diesel
+   ____________________  ___________________________________   _______  _______  _______  _______
+   CHEVRON               2402 E WASHINGTON ST, PHOENIX           2.899      N/A    3.139    2.999
+   CIRCLE K              699 E BUCKEYE RD, PHOENIX               2.839    2.969      N/A      N/A
+   CIRCLE K              602 N 1ST AVE, PHOENIX                  2.779    2.909    3.079      N/A
+   Circle K              1501 W Mcdowell Rd, Phoenix             2.759    2.909    3.099    2.949
+   Circle K              309 E Osborn Rd, Phoenix                2.759    2.909      N/A    2.949
+   Circle K              614 W ROOSEVELT ST, Phoenix             2.759      N/A    3.059      N/A
+   Circle K              702 W Mcdowell Rd, Phoenix              2.779      N/A    3.099      N/A
+   Circle K              10 E BUCKEYE RD, Phoenix                2.819      N/A      N/A      N/A
+   Circle K              2400 E Mcdowell Rd, Phoenix             2.779    2.949    3.119      N/A
+   Circle K              1602 E Washington St, Phoenix           2.879    3.029    3.199      N/A
+   Circle K              1732 W VAN BUREN ST, Phoenix            2.839    2.969    3.139      N/A
+   Circle K              1342 W THOMAS RD, Phoenix               2.779      N/A      N/A      N/A
+   Circle K              1945 E Van Buren St, Phoenix            2.879    3.029    3.199      N/A
+   Circle K              1834 W Grant St, Phoenix                2.839    2.969      N/A      N/A
+   Circle K              1523 E MCDOWELL RD, Phoenix             2.789    2.759      N/A      N/A
+   Circle K              1001 N 16Th St, Phoenix                 2.879    3.029      N/A      N/A
+   Circle K              2041 W Van Buren St, Phoenix            2.839    2.969      N/A      N/A
+   Circle K              1007 N 7Th St, Phoenix                  2.879      N/A      N/A      N/A
+   Circle K              702 E Mcdowell Rd, Phoenix              2.819    2.969    3.119      N/A
+   Circle K              2535 N CENTRAL AVE, Phoenix             2.899      N/A      N/A      N/A
+   Circle K              966 E Van Buren St, Phoenix             2.859    3.009      N/A      N/A
+   Circle K              2850 N 7Th St, Phoenix                  2.859    3.029      N/A      N/A
+   Phillips 66           1045 N 24TH ST, Phoenix                 2.799      N/A      N/A    2.899
+   SHELL                 305 E THOMAS RD, PHOENIX                2.899      N/A      N/A      N/A
+   Shell                 922 N 7TH ST, Phoenix                   2.879    2.989      N/A      N/A
+   Shell                 2401 E VAN BUREN ST, Phoenix            2.849      N/A      N/A    3.079
+   UNBRANDED             2817 N 7TH ST, PHOENIX                  2.839      N/A      N/A      N/A
+   UNBRANDED             125 E MCDOWELL RD, PHOENIX              2.819      N/A      N/A      N/A
+   Unbranded             2045 S 7TH AVE, Phoenix                 2.959    2.949    2.989    2.959
+   Unbranded             1919 S 7TH ST, Phoenix                  2.899      N/A      N/A    3.299
+    
+    
+    
+    
+   STATION COMPARISON FOR ZIP CODE 85201
+   -------------------------------------
+    
+   Station               Address                               Regular     Plus  Premium   Diesel
+   ____________________  ___________________________________   _______  _______  _______  _______
+   7-ELEVEN              815 S ALMA SCHOOL RD, MESA              2.819      N/A    3.059      N/A
+   7-ELEVEN              815 S DOBSON RD, MESA                   2.799      N/A      N/A      N/A
+   7-ELEVEN              758 E BROWN RD, MESA                    2.859    2.959      N/A      N/A
+   ARCO                  25 W MCKELLIPS RD, MESA                 2.799      N/A      N/A      N/A
+   CHEVRON               808 E MCKELLIPS RD, MESA                2.869    2.999    3.099    2.939
+   CIRCLE K              2196 E APACHE BLVD, TEMPE               2.799    2.929      N/A      N/A
+   Chevron               357 N Stapley Dr, Mesa                  2.839      N/A    3.099      N/A
+   Circle K              735 W Broadway Rd, Mesa                 2.819    2.949    3.119      N/A
+   Circle K              11 E Mckellips Rd, Mesa                 2.779      N/A      N/A      N/A
+   Circle K              1550 N Country Club Dr, Mesa            2.779      N/A      N/A      N/A
+   Circle K              410 N Center St, Mesa                   2.779      N/A    3.099    2.849
+   Circle K              1205 E BROADWAY RD, Mesa                2.799      N/A      N/A      N/A
+   Circle K              417 S Dobson Rd, Mesa                   2.799    2.929    3.099      N/A
+   Circle K              1145 W Main St, Mesa                    2.799    2.929    3.099      N/A
+   Circle K              1154 W 8Th St, Mesa                     2.799    2.929    3.099      N/A
+   Circle K              1955 W UNIVERSITY DR, Mesa              2.799      N/A      N/A      N/A
+   Circle K              330 E BROADWAY RD, Mesa                 2.799    2.929      N/A      N/A
+   Circle K              1160 E UNIVERSITY DR, Mesa              2.879      N/A      N/A      N/A
+   Circle K              310 N Mesa Dr, Mesa                     2.819      N/A      N/A      N/A
+   Quik Trip             517 W MCKELLIPS RD, Mesa                2.799    2.899    2.999      N/A
+   Quik Trip             1331 S COUNTRY CLUB DR, Mesa            2.799    2.899    2.999      N/A
+   Quik Trip             2311 W BROADWAY RD, Mesa                2.799    2.899    2.999      N/A
+   Quik Trip             816 W UNIVERSITY DR, Mesa               2.799    2.899    2.999      N/A
+   SHELL                 1957 N COUNTRY CLUB DR, MESA            2.999      N/A      N/A    2.969
+   SHELL                 16 W MCKELLIPS RD, MESA                 2.889    2.989      N/A    2.939
+   Shell                 2174 E University Dr, Tempe             2.819    2.779    2.929    2.949
+   Shell                 2005 W BROADWAY RD, Mesa                2.819    2.799    3.129    2.949
+   Shell                 1158 W UNIVERSITY DR, Mesa              2.999    3.009    2.879      N/A
+   Texaco                1601 N BEELINE HWY, Scottsdale          2.899    2.999    3.089      N/A
+   Unbranded             756 W SOUTHERN AVE, Mesa                2.699      N/A      N/A    2.899
+
+
+More examples will be added over time and will be made available at L<http://www.full-duplex.com/svcs04.html> somewhere on the page.
 
 =back
 

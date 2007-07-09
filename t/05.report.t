@@ -16,8 +16,6 @@ BEGIN
 # use lib '../../../lib';
 use Text::Report;
 
-_test_defaults();
-   
 # ----------------------------- #
 # --- Create new report obj --- #
 # ----------------------------- #
@@ -25,6 +23,8 @@ my $rpt = Text::Report->new(debug => 'off', debugv => 1,);
    
 main
 {
+   _test_defaults();
+   
    my @data = _getdata();
    
    _build_report1(@data);

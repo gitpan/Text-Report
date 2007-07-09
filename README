@@ -1,6 +1,6 @@
 Text-Report
 
-Wednesday, 04 July, 2007 23:17
+Monday, 09 July, 2007 11:24
 ------------------------------
 
 Text::Report is a module that will allow you to create neatly
@@ -36,14 +36,18 @@ text. Plans are being made to add html and xml output as well.
 I've also incorporated a feature that allows you to save the defined
 report as a template (using Storable store() & retrieve()) for reuse.
 
-More detailed information and the most current build can be found at
-http://www.full-duplex.com/svcs04.html under "Perl Libraries",
-"Text::Report".
+More detailed information, sample code and the most current builds 
+can be found at http://www.full-duplex.com/svcs04.html under 
+"Perl Libraries", "Text::Report".
 
 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-I would be interested in hearing about how you have used this module
-or if you have any suggestions, comments (yes, even bad) or questions.
+I would be interested in hearing about how you have used this module,
+maybe by supplying an example or two or if you have any suggestions, 
+comments (yes, even bad) or questions.
+
+You may reach me/us at davidius (AT) cpan (DOT) org or via the contact
+page at http://www.full-duplex.com/contact.html
 
 Polite correspondence will be given a higher response priority.
 
@@ -57,10 +61,16 @@ To install this module, run the following commands:
     make test
     make install
 
+DEPENDENCIES
+
+The use of 'Storable' is optional and necessary only if you want to 
+create report templates. 
+
 
 SUPPORT AND DOCUMENTATION
 
-After installing, you can find documentation for this module with the perldoc command.
+After installing, you can find documentation for this module with the 
+perldoc command.
 
     perldoc Text::Report
 
